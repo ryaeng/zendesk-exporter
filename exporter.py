@@ -18,20 +18,23 @@ zendesk_ticket_count = Gauge(
     'zendesk_ticket_count', 'Total number of Zendesk tickets')
 
 
-def fetch_tickets():
-    response = requests.get(f'{ZENDESK_API_URL}/tickets.json', auth=(
-        f'{ZENDESK_EMAIL}/token', ZENDESK_API_TOKEN))
+def get_zendesk_ticket_count(url, user, token):
+    ''' This function returns the total ticket count from the Zendesk api. '''
 
-    if response.status_code == 200:
-        tickets = response.json()['tickets']
-        return len(tickets)
-    else:
-        print(f"Failed to fetch data from Zendesk: {response.status_code}")
+    response = requests.get(f'{url}/tickets.json',
+                            auth=(f'{user}/token', token))
+
+    if response.status_code != 200:
+        print(f'Failed to fetch data from Zendesk: {response.status_code}')
         return 0
+
+    return response.json()['count']
 
 
 def collect_metrics():
-    ticket_count = fetch_tickets()
+    ticket_count = get_zendesk_ticket_count(
+        ZENDESK_API_URL, ZENDESK_EMAIL, ZENDESK_API_TOKEN)
+
     zendesk_ticket_count.set(ticket_count)
 
 
