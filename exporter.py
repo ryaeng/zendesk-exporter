@@ -1,11 +1,15 @@
 from dotenv import load_dotenv
 from prometheus_client import start_http_server, Gauge
 from zenpy import Zenpy, ZenpyException
+import logging
 import time
 import os
 
 # Load environment variables from .env file
 load_dotenv()
+
+# Configure logging to stdout (default behavior)
+logging.basicConfig(level=logging.ERROR)
 
 # Get the environment variables
 ZENDESK_DOMAIN = os.getenv('ZENDESK_DOMAIN')
@@ -35,10 +39,11 @@ def get_zendesk_ticket_total():
         ticket_count = zenpy_client.search(type='ticket').count
     except ZenpyException as e:
         # Handle Zenpy-specific exceptions
-        print(f'An error occurred while fetching the ticket count: {str(e)}')
+        logging.error(
+            f'An error occurred while fetching the ticket count: {str(e)}')
     except Exception as e:
         # Handle any other exception
-        print(f'An unexpected error occurred: {str(e)}')
+        logging.error(f'An unexpected error occurred: {str(e)}')
 
     return ticket_count
 
