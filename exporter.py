@@ -19,7 +19,9 @@ zendesk_ticket_count = Gauge(
 
 
 def get_zendesk_ticket_count(url, user, token):
-    ''' This function returns the total ticket count from the Zendesk api. '''
+    '''
+    This function returns the total number of tickets within Zendesk.
+    '''
 
     response = requests.get(f'{url}/tickets.json',
                             auth=(f'{user}/token', token))
