@@ -14,11 +14,11 @@ ZENDESK_API_TOKEN = os.getenv('ZENDESK_API_TOKEN')
 ZENDESK_API_URL = f'https://{ZENDESK_DOMAIN}.zendesk.com/api/v2'
 
 # Define Prometheus metrics
-zendesk_ticket_count = Gauge(
-    'zendesk_ticket_count', 'Total number of Zendesk tickets')
+zendesk_ticket_total = Gauge(
+    'zendesk_ticket_total', 'Total number of Zendesk tickets')
 
 
-def get_zendesk_ticket_count(url, user, token):
+def get_zendesk_ticket_total(url, user, token):
     '''
     This function returns the total number of tickets within Zendesk.
     '''
@@ -34,10 +34,10 @@ def get_zendesk_ticket_count(url, user, token):
 
 
 def collect_metrics():
-    ticket_count = get_zendesk_ticket_count(
+    ticket_total = get_zendesk_ticket_total(
         ZENDESK_API_URL, ZENDESK_EMAIL, ZENDESK_API_TOKEN)
 
-    zendesk_ticket_count.set(ticket_count)
+    zendesk_ticket_total.set(ticket_total)
 
 
 if __name__ == '__main__':
