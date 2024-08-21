@@ -1,7 +1,7 @@
-from prometheus_client import start_http_server, Gauge
-import requests
-import time
 from dotenv import load_dotenv
+from prometheus_client import start_http_server, Gauge
+from zenpy import Zenpy, ZenpyException
+import time
 import os
 
 # Load environment variables from .env file
@@ -11,31 +11,40 @@ load_dotenv()
 ZENDESK_DOMAIN = os.getenv('ZENDESK_DOMAIN')
 ZENDESK_EMAIL = os.getenv('ZENDESK_EMAIL')
 ZENDESK_API_TOKEN = os.getenv('ZENDESK_API_TOKEN')
-ZENDESK_API_URL = f'https://{ZENDESK_DOMAIN}.zendesk.com/api/v2'
+
+# Zenpy API token
+creds = {
+    'email': ZENDESK_EMAIL,
+    'token': ZENDESK_API_TOKEN,
+    'subdomain': ZENDESK_DOMAIN,
+}
+
+zenpy_client = Zenpy(**creds)
 
 # Define Prometheus metrics
 zendesk_ticket_total = Gauge(
     'zendesk_ticket_total', 'Total number of Zendesk tickets')
 
 
-def get_zendesk_ticket_total(url, user, token):
+def get_zendesk_ticket_total():
     '''
     This function returns the total number of tickets within Zendesk.
     '''
 
-    response = requests.get(f'{url}/tickets.json',
-                            auth=(f'{user}/token', token))
+    try:
+        ticket_count = zenpy_client.search(type='ticket').count
+    except ZenpyException as e:
+        # Handle Zenpy-specific exceptions
+        print(f'An error occurred while fetching the ticket count: {str(e)}')
+    except Exception as e:
+        # Handle any other exception
+        print(f'An unexpected error occurred: {str(e)}')
 
-    if response.status_code != 200:
-        print(f'Failed to fetch data from Zendesk: {response.status_code}')
-        return 0
-
-    return response.json()['count']
+    return ticket_count
 
 
 def collect_metrics():
-    ticket_total = get_zendesk_ticket_total(
-        ZENDESK_API_URL, ZENDESK_EMAIL, ZENDESK_API_TOKEN)
+    ticket_total = get_zendesk_ticket_total()
 
     zendesk_ticket_total.set(ticket_total)
 

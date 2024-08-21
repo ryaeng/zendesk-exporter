@@ -5,3 +5,4 @@ prometheus_client==0.20.0
 python-dotenv==1.0.1
 requests==2.32.3
 urllib3==2.2.2
+zenpy==2.0.50
