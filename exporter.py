@@ -1,7 +1,9 @@
 from dotenv import load_dotenv
-from prometheus_client import start_http_server, Gauge
+from enum import Enum
 from zenpy import Zenpy, ZenpyException
+import datetime
 import logging
+import prometheus_client
 import time
 import os
 
@@ -25,37 +27,58 @@ creds = {
 
 zenpy_client = Zenpy(**creds)
 
-# Define Prometheus metrics
-zendesk_ticket_total = Gauge(
-    'zendesk_ticket_total', 'Total number of Zendesk tickets')
+# Prometheus metrics
+zendesk_ticket_total = prometheus_client.Gauge('zendesk_ticket_total',
+                                               'Zendesk tickets over the last month (30 days)',
+                                               ['status'])
 
 
-def get_zendesk_ticket_total():
+def zenpy_error_handler(exception, zenpy_type):
+    e = exception
+
+    # Handle Zenpy-specific exceptions
+    if e == 'ZenpyException':
+        msg = f'An error occurred while fetching {zenpy_type}: {str(e)}'
+    # Handle any other exception
+    else:
+        msg = f'An unexpected error occurred: {str(e)}'
+
+    logging.error(msg)
+
+
+def get_zendesk_ticket_total(status_category):
     '''
-    This function returns the total number of tickets within Zendesk.
+    This function sets the Zendesk ticket totals over the last
+    month (30 days).
     '''
+
+    status_name = status_category.name.lower()
+    one_mo_ago = datetime.datetime.now() - datetime.timedelta(days=30)
+    today = datetime.datetime.now()
 
     try:
-        ticket_count = zenpy_client.search(type='ticket').count
-    except ZenpyException as e:
-        # Handle Zenpy-specific exceptions
-        logging.error(
-            f'An error occurred while fetching the ticket count: {str(e)}')
-    except Exception as e:
-        # Handle any other exception
-        logging.error(f'An unexpected error occurred: {str(e)}')
+        ticket_search = zenpy_client.search('', created_between=[one_mo_ago, today],
+                                            status=f'{status_name}', type='ticket', minus='negated')
+    except (ZenpyException, Exception) as e:
+        zenpy_error_handler(e, 'tickets')
 
-    return ticket_count
+    zendesk_ticket_total.labels(status=f'{status_name}').set(len(ticket_search))
 
 
 def collect_metrics():
-    ticket_total = get_zendesk_ticket_total()
+    class TicketStatusCategories(Enum):
+        NEW = 1
+        OPEN = 2
+        PENDING = 3
+        HOLD = 4
+        SOLVED = 5
 
-    zendesk_ticket_total.set(ticket_total)
+    for status_category in TicketStatusCategories:
+        get_zendesk_ticket_total(status_category)
 
 
 if __name__ == '__main__':
-    start_http_server(8000)
+    prometheus_client.start_http_server(8000)
     print("Prometheus exporter started on port 8000")
     while True:
         collect_metrics()
